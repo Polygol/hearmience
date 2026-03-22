@@ -320,7 +320,7 @@
 
         function init() {
             sounds.forEach(sound => {
-                state[sound.id] = { playing: false, volume: 0.5 };
+                state[sound.id] = { playing: false, volume: 1 };
                 
                 // Create a gain node (volume controller) for this sound
                 const gainNode = audioContext.createGain();
