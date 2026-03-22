@@ -280,10 +280,24 @@
             { category: 'storms', id: 's77', title: 'Wind', icon: 'air', url: 'https://actions.google.com/sounds/v1/weather/wind.ogg' }
         ];
 
-        const audioElements = {};
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const buffers = {};
+        const sources = {};
+        const gains = {};
         const state = {}; // Stores { playing: bool, volume: float }
         let globalVolume = 1.0;
         let globalMuted = false;
+
+        // Fetch and decode audio file into memory
+        async function loadAudio(id, url) {
+            try {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                buffers[id] = await audioContext.decodeAudioData(arrayBuffer);
+            } catch (e) {
+                console.error(`Failed to load audio for ${id}:`, e);
+            }
+        }
 
         function createCard(sound) {
             const card = document.createElement('div');
@@ -306,10 +320,16 @@
 
         function init() {
             sounds.forEach(sound => {
-                state[sound.id] = { playing: false, volume: 1 };
-                const audio = new Audio(sound.url);
-                audio.loop = true;
-                audioElements[sound.id] = audio;
+                state[sound.id] = { playing: false, volume: 0.5 };
+                
+                // Create a gain node (volume controller) for this sound
+                const gainNode = audioContext.createGain();
+                gainNode.gain.value = 0; // Initialize at 0, updated when played
+                gainNode.connect(audioContext.destination);
+                gains[sound.id] = gainNode;
+
+                // Preload the audio file into memory in the background
+                loadAudio(sound.id, sound.url);
 
                 const grid = document.getElementById(`${sound.category}-grid`);
                 if (grid) grid.appendChild(createCard(sound));
@@ -344,31 +364,53 @@
         }
 
         function toggleSound(id) {
-            const audio = audioElements[id];
-            const isPlaying = !audio.paused;
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            const isPlaying = state[id].playing;
             
             if (!isPlaying) {
-                audio.volume = globalMuted ? 0 : (state[id].volume * globalVolume);
-                audio.play();
-                state[id].playing = true;
+                if (buffers[id]) {
+                    const source = audioContext.createBufferSource();
+                    source.buffer = buffers[id];
+                    source.loop = true;
+                    source.connect(gains[id]);
+                    
+                    const targetVolume = globalMuted ? 0 : (state[id].volume * globalVolume);
+                    gains[id].gain.setTargetAtTime(targetVolume, audioContext.currentTime, 0.05);
+                    
+                    source.start(0);
+                    sources[id] = source;
+                    state[id].playing = true;
+                } else {
+                    Gurasuraisu.showPopup("Loading sound, please wait...");
+                    return;
+                }
             } else {
-                audio.pause();
+                if (sources[id]) {
+                    sources[id].stop();
+                    sources[id].disconnect();
+                    sources[id] = null;
+                }
                 state[id].playing = false;
             }
 
-            // Sync all cards across categories and search
             document.querySelectorAll(`[data-sound-id="${id}"]`).forEach(card => {
                 card.classList.toggle('active', state[id].playing);
             });
             
             updateLiveActivity();
+            if (window.RemoteInterface) RemoteInterface.render();
         }
 
         function updateVol(id, val) {
             const vol = val / 100;
             state[id].volume = vol;
-            if (state[id].playing) {
-                audioElements[id].volume = globalMuted ? 0 : (vol * globalVolume);
+            if (state[id].playing && gains[id]) {
+                const targetVolume = globalMuted ? 0 : (vol * globalVolume);
+                // Smooth transition to avoid clicks/pops
+                gains[id].gain.setTargetAtTime(targetVolume, audioContext.currentTime, 0.05);
             }
         }
 
@@ -403,7 +445,11 @@
 
         document.getElementById('stopAllBtn').onclick = () => {
             sounds.forEach(s => {
-                if (audioElements[s.id]) audioElements[s.id].pause();
+                if (sources[s.id]) {
+                    sources[s.id].stop();
+                    sources[s.id].disconnect();
+                    sources[s.id] = null;
+                }
                 state[s.id].playing = false;
             });
             
@@ -413,15 +459,16 @@
             });
             
             updateLiveActivity();
+            if (window.RemoteInterface) RemoteInterface.render();
         };
 
         window.addEventListener('GurasuraisuVolumeChange', (e) => {
             globalMuted = e.detail.muted;
             globalVolume = e.detail.level;
-            Object.keys(audioElements).forEach(id => {
-                const audio = audioElements[id];
+            Object.keys(gains).forEach(id => {
                 if (state[id].playing) {
-                    audio.volume = globalMuted ? 0 : (state[id].volume * globalVolume);
+                    const targetVolume = globalMuted ? 0 : (state[id].volume * globalVolume);
+                    gains[id].gain.setTargetAtTime(targetVolume, audioContext.currentTime, 0.05);
                 }
             });
         });
@@ -441,7 +488,66 @@
             }
         });
 
+        // --- Waves Remote Interface ---
+        const RemoteInterface = {
+            init: function() {
+                if (typeof Gurasuraisu === 'undefined') return;
+                this.render();
+                Gurasuraisu.onRemoteAction((id, value) => this.handleAction(id, value));
+                Gurasuraisu.onRequestRemoteUI(() => this.render());
+            },
+            render: function() {
+                let ui = [];
+                const activeSounds = sounds.filter(s => state[s.id].playing);
+                
+                if (activeSounds.length > 0) {
+                    ui.push({ type: 'text', id: 'hdr_active', content: 'Active Mix', size: 'large' });
+                    
+                    activeSounds.forEach(s => {
+                        ui.push({ type: 'text', id: 'txt_' + s.id, content: s.title, size: 'medium' });
+                        ui.push({ type: 'row', components:[
+                            { type: 'button', id: 'toggle_' + s.id, icon: s.icon, style: 'filled' },
+                            { type: 'slider', id: 'vol_' + s.id, value: state[s.id].volume * 100, min: 0, max: 100 }
+                        ]});
+                    });
+
+                    ui.push({ type: 'row', components:[
+                        { type: 'button', id: 'stop_all', label: 'Stop All', icon: 'stop_circle', style: 'tonal' }
+                    ]});
+                }
+                
+                ui.push({ type: 'text', id: 'hdr_browse', content: 'Library', size: 'large' });
+                
+                const listItems = sounds.map(s => ({
+                    id: 'list_toggle_' + s.id,
+                    title: s.title,
+                    subtitle: state[s.id].playing ? 'Playing' : (s.category.charAt(0).toUpperCase() + s.category.slice(1))
+                }));
+                
+                ui.push({ type: 'list', id: 'sound_list', items: listItems });
+                
+                Gurasuraisu.setRemoteUI(ui);
+            },
+            handleAction: function(id, value) {
+                if (id.startsWith('vol_')) {
+                    const soundId = id.replace('vol_', '');
+                    updateVol(soundId, value);
+                    // Sync local UI sliders
+                    document.querySelectorAll(`[data-sound-id="${soundId}"] input[type="range"]`).forEach(slider => {
+                        slider.value = value;
+                    });
+                } else if (id.startsWith('toggle_')) {
+                    toggleSound(id.replace('toggle_', ''));
+                } else if (id.startsWith('list_toggle_')) {
+                    toggleSound(id.replace('list_toggle_', ''));
+                } else if (id === 'stop_all') {
+                    document.getElementById('stopAllBtn').click();
+                }
+            }
+        };
+
         init();
+        setTimeout(() => RemoteInterface.init(), 1000);
     </script>
 </body>
 </html>
