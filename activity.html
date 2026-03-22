@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <script src="/assets/gurapp/api/gurasuraisu-api.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: transparent;
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .activity-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .big {
+            font-size: 1.2rem;
+            font-weight: 700;
+            font-family: 'Open Runde', 'Inter', sans-serif;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+        
+        .label {
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .control-btn {
+            background-color: var(--search-background);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--sun-shadow);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+        }
+        
+        .material-symbols-rounded {
+            font-size: 20px;
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body data-app-name="HEARMIENCE">
+    <div class="activity-container">
+        <div class="info">
+            <div id="status" class="big">Hearmience</div>
+        </div>
+        <div class="controls">
+            <button id="stopBtn" class="control-btn">
+                <span class="material-symbols-rounded">stop</span>
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusText = document.getElementById('status');
+            const detailsText = document.getElementById('details');
+            const stopBtn = document.getElementById('stopBtn');
+
+            window.addEventListener('message', (event) => {
+                if (event.source !== window.parent) return;
+                const data = event.data;
+                if (data && data.type === 'live-activity-update') {
+                    statusText.textContent = data.activeCount > 0 ? `${data.activeCount} sounds` : "Stopped";
+
+                    Gurasuraisu.liveActivity.pushHomescreenUpdate({
+                        icon: 'hearing',
+                        text: `${data.activeCount}`
+                    });
+                }
+            });
+
+            stopBtn.addEventListener('click', () => {
+                // Command parent app via postMessage to target Hearmience logic
+                window.parent.postMessage({
+                    targetApp: 'Hearmience',
+                    action: 'stop-hearmience'
+                }, '*');
+            });
+
+            // Signal readiness to parent
+            window.parent.postMessage({ targetApp: 'Hearmience', action: 'activity-ready' }, '*');
+        });
+    </script>
+</body>
+</html>

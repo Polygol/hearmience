@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Hearmience</title>
+    <script src="/assets/gurapp/api/gurasuraisu-api.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--background-color-tr);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+            padding: 20px;
+            height: 100vh;
+            overflow-y: auto;
+            user-select: none;
+            display: flex;
+        }
+
+        .view-container {
+            display: none;
+            margin: 60px auto 100px auto;
+            height: calc(100vh - 120px);
+        }
+        
+        .view-container.active {
+            display: block;
+        }
+
+        .sound-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 15px;
+            max-width: 800px;
+            width: 100%;
+            margin: auto;
+            padding-bottom: 120px;
+        }
+
+        .sound-card {
+            background: var(--search-background);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            corner-shape: superellipse(1.5);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            backdrop-filter: var(--edge-refraction-filter) saturate(2) blur(2.5px);
+            box-shadow: var(--sun-shadow);
+            transition: all 0.3s cubic-bezier(.2, 1.3, .64, 1);
+            aspect-ratio: 1/1;
+        }
+
+        .sound-card.active {
+            background-color: var(--accent);
+            color: var(--background-color);
+            border-radius: 500px;
+            corner-shape: round;
+            gap: 0;
+        }
+
+        .icon-circle {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .sound-card.active .icon-circle {
+            transform: scale(1.1);
+        }
+
+        .sound-title {
+            font-size: 0.8rem;
+            transition: all 0.3s cubic-bezier(.2, 1.3, .64, 1);
+        }
+
+        .sound-card.active .sound-title {
+            font-size: 0;
+            color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .volume-slider-container {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .master-controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+
+        .action-btn {
+            font-family: 'Inter';
+            background-color: var(--search-background);
+            color: var(--text-color);
+            border-radius: 50px;
+            padding: 12px 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            backdrop-filter: var(--edge-refraction-filter) saturate(2) blur(2.5px);
+            box-shadow: var(--sun-shadow);
+            border: 1px solid var(--glass-border);
+            font-weight: 500;
+        }
+
+        .search-container {
+            position: relative;
+            flex-grow: 1;
+            min-width: 200px;
+            margin-bottom: 10px;
+        }
+
+        .search-icon {
+            font-size: 20px;
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--secondary-text-color);
+            pointer-events: none;
+            z-index: 1;
+            padding-left: 2px;
+        }
+
+        .library-search-input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border-radius: 25px;
+            border: 1px solid var(--glass-border);
+            background: var(--search-background);
+            color: var(--text-color);
+            backdrop-filter: var(--edge-refraction-filter) saturate(2) blur(2.5px);
+            box-shadow: var(--sun-shadow);
+            font-size: 14px;
+            outline: none;
+        }
+    </style>
+</head>
+<body data-app-name="HEARMIENCE">
+    <div class="toolbar">
+        <button class="tab-btn active" data-view="interior">
+            <span class="material-symbols-rounded">king_bed</span>
+            Interior
+        </button>
+        <button class="tab-btn" data-view="nature">
+            <span class="material-symbols-rounded">forest</span>
+            Nature
+        </button>
+        <button class="tab-btn" data-view="industrial">
+            <span class="material-symbols-rounded">factory</span>
+            Industrial
+        </button>
+        <button class="tab-btn" data-view="rain">
+            <span class="material-symbols-rounded">rainy</span>
+            Rain
+        </button>
+        <button class="tab-btn" data-view="storms">
+            <span class="material-symbols-rounded">thunderstorm</span>
+            Storms
+        </button>
+        <button class="tab-btn" data-view="search">
+            <span class="material-symbols-rounded">search</span>
+            Search
+        </button>
+    </div>
+
+    <div id="interior-view" class="view-container active">
+        <div class="sound-grid" id="interior-grid"></div>
+    </div>
+    <div id="nature-view" class="view-container">
+        <div class="sound-grid" id="nature-grid"></div>
+    </div>
+    <div id="industrial-view" class="view-container">
+        <div class="sound-grid" id="industrial-grid"></div>
+    </div>
+    <div id="rain-view" class="view-container">
+        <div class="sound-grid" id="rain-grid"></div>
+    </div>
+    <div id="storms-view" class="view-container">
+        <div class="sound-grid" id="storms-grid"></div>
+    </div>
+
+    <div id="search-view" class="view-container">
+        <div class="search-container">
+            <span class="material-symbols-rounded search-icon">search</span>
+            <input type="text" id="searchInput" placeholder="Search" class="library-search-input" style="border-radius: 50px; padding-left: 45px;">
+        </div>
+        <div class="sound-grid" id="search-grid"></div>
+    </div>
+
+    <div class="master-controls">
+        <button class="action-btn" id="stopAllBtn">
+            <span class="material-symbols-rounded">stop</span>
+            Stop
+        </button>
+    </div>
+
+    <script>
+        const sounds =[
+            // Interior
+            { category: 'interior', id: 's1', title: 'Air Conditioner', icon: 'ac_unit', url: 'https://actions.google.com/sounds/v1/ambiences/ambient_hum_air_conditioner.ogg' },
+            { category: 'interior', id: 's5', title: 'Children Group', icon: 'child_care', url: 'https://actions.google.com/sounds/v1/ambiences/children_group_ambience.ogg' },
+            { category: 'interior', id: 's6', title: 'Coffee Shop', icon: 'local_cafe', url: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg' },
+            { category: 'interior', id: 's9', title: 'DMV Background', icon: 'domain', url: 'https://actions.google.com/sounds/v1/ambiences/dmv_background_noise.ogg' },
+            { category: 'interior', id: 's28', title: 'Laundromat', icon: 'local_laundry_service', url: 'https://actions.google.com/sounds/v1/ambiences/laundromat_sounds.ogg' },
+            { category: 'interior', id: 's39', title: 'Retail Noises', icon: 'storefront', url: 'https://actions.google.com/sounds/v1/ambiences/retail_background_noises.ogg' },
+            { category: 'interior', id: 's42', title: 'Subway Station', icon: 'subway', url: 'https://actions.google.com/sounds/v1/ambiences/subway_station_nyc.ogg' },
+            { category: 'interior', id: 's60', title: 'Long Silence', icon: 'volume_mute', url: 'https://actions.google.com/sounds/v1/weather/long_silence_at_top.ogg' },
+            
+            // Nature
+            { category: 'nature', id: 's3', title: 'Barnyard', icon: 'agriculture', url: 'https://actions.google.com/sounds/v1/ambiences/barnyard_with_animals.ogg' },
+            { category: 'nature', id: 's20', title: 'Barn Chickens', icon: 'agriculture', url: 'https://actions.google.com/sounds/v1/ambiences/inside_barn_with_chickens.ogg' },
+            { category: 'nature', id: 's29', title: 'Morning Farm', icon: 'agriculture', url: 'https://actions.google.com/sounds/v1/ambiences/morning_farm.ogg' },
+            { category: 'nature', id: 's32', title: 'Outdoor Farm', icon: 'agriculture', url: 'https://actions.google.com/sounds/v1/ambiences/outdoor_farm_sounds.ogg' },
+            { category: 'nature', id: 's22', title: 'Jungle Afternoon', icon: 'forest', url: 'https://actions.google.com/sounds/v1/ambiences/jungle_atmosphere_afternoon.ogg' },
+            { category: 'nature', id: 's23', title: 'Jungle Late Night', icon: 'forest', url: 'https://actions.google.com/sounds/v1/ambiences/jungle_atmosphere_late_night.ogg' },
+            { category: 'nature', id: 's24', title: 'Jungle Morning', icon: 'forest', url: 'https://actions.google.com/sounds/v1/ambiences/jungle_atmosphere_morning.ogg' },
+            { category: 'nature', id: 's25', title: 'Jungle Night', icon: 'forest', url: 'https://actions.google.com/sounds/v1/ambiences/jungle_atmosphere_night.ogg' },
+            { category: 'nature', id: 's41', title: 'Spring Forest', icon: 'forest', url: 'https://actions.google.com/sounds/v1/ambiences/spring_day_forest.ogg' },
+            { category: 'nature', id: 's44', title: 'Summer Forest', icon: 'forest', url: 'https://actions.google.com/sounds/v1/ambiences/summer_forest.ogg' },
+            { category: 'nature', id: 's57', title: 'Leaves Rustle', icon: 'eco', url: 'https://actions.google.com/sounds/v1/weather/leaves_russle_on_tree.ogg' },
+            
+            // Industrial & Travel
+            { category: 'industrial', id: 's2', title: 'Arcade Room', icon: 'sports_esports', url: 'https://actions.google.com/sounds/v1/ambiences/arcade_room.ogg' },
+            { category: 'industrial', id: 's12', title: 'Factory', icon: 'factory', url: 'https://actions.google.com/sounds/v1/ambiences/factory_background.ogg' },
+            { category: 'industrial', id: 's13', title: 'Manufacture', icon: 'factory', url: 'https://actions.google.com/sounds/v1/ambiences/factory_manufacture_background.ogg' },
+            { category: 'industrial', id: 's14', title: 'Factory Morning', icon: 'factory', url: 'https://actions.google.com/sounds/v1/ambiences/factory_morning_start_up.ogg' },
+            { category: 'industrial', id: 's15', title: 'Factory Sounds', icon: 'factory', url: 'https://actions.google.com/sounds/v1/ambiences/factory_sounds.ogg' },
+            { category: 'industrial', id: 's11', title: 'Distant Highway', icon: 'directions_car', url: 'https://actions.google.com/sounds/v1/ambiences/distant_highway.ogg' },
+            { category: 'industrial', id: 's18', title: 'Highway Waterfront', icon: 'directions_car', url: 'https://actions.google.com/sounds/v1/ambiences/highway_near_waterfront.ogg' },
+            { category: 'industrial', id: 's30', title: 'Morning Highway', icon: 'directions_car', url: 'https://actions.google.com/sounds/v1/ambiences/morning_highway_in_distance.ogg' },
+            { category: 'industrial', id: 's83', title: 'Windy Driving', icon: 'air', url: 'https://actions.google.com/sounds/v1/weather/windy_weather_driving.ogg' },
+            { category: 'industrial', id: 's46', title: 'Truck Beeping', icon: 'local_shipping', url: 'https://actions.google.com/sounds/v1/ambiences/truck_beeping.ogg' },
+
+            // Rain
+            { category: 'rain', id: 's56', title: 'Ice or Rain', icon: 'water_drop', url: 'https://actions.google.com/sounds/v1/weather/ice_or_rain.ogg' },
+            { category: 'rain', id: 's59', title: 'Light Rain', icon: 'water_drop', url: 'https://actions.google.com/sounds/v1/weather/light_rain.ogg' },
+            { category: 'rain', id: 's62', title: 'Heavy Rain', icon: 'water_drop', url: 'https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg' },
+            { category: 'rain', id: 's63', title: 'Interior Rain', icon: 'water_drop', url: 'https://actions.google.com/sounds/v1/weather/rain_heavy_quiet_interior.ogg' },
+            { category: 'rain', id: 's64', title: 'Rain on Roof', icon: 'water_drop', url: 'https://actions.google.com/sounds/v1/weather/rain_on_roof.ogg' },
+            { category: 'rain', id: 's65', title: 'Rain on Rooftop', icon: 'water_drop', url: 'https://actions.google.com/sounds/v1/weather/rain_on_rooftop.ogg' },
+            { category: 'rain', id: 's66', title: 'Drip Fast', icon: 'water_drop', url: 'https://actions.google.com/sounds/v1/weather/rain_water_dripping_fast_hard.ogg' },
+            { category: 'rain', id: 's67', title: 'Drip Softly', icon: 'water_drop', url: 'https://actions.google.com/sounds/v1/weather/rain_water_dripping_softly.ogg' },
+            { category: 'rain', id: 's68', title: 'Rain on Car', icon: 'water_drop', url: 'https://actions.google.com/sounds/v1/weather/rain_on_car_heavy.ogg' },
+
+            // Storms & Wind
+            { category: 'storms', id: 's50', title: 'Afternoon Storm', icon: 'thunderstorm', url: 'https://actions.google.com/sounds/v1/weather/afternoon_storm_long.ogg' },
+            { category: 'storms', id: 's52', title: 'Distant Thunder', icon: 'thunderstorm', url: 'https://actions.google.com/sounds/v1/weather/distant_thunder.ogg' },
+            { category: 'storms', id: 's61', title: 'Low Thunder', icon: 'thunderstorm', url: 'https://actions.google.com/sounds/v1/weather/low_thunder_rolls.ogg' },
+            { category: 'storms', id: 's69', title: 'Rolling Thunder', icon: 'thunderstorm', url: 'https://actions.google.com/sounds/v1/weather/rolling_thunder.ogg' },
+            { category: 'storms', id: 's73', title: 'Summer Thunder', icon: 'thunderstorm', url: 'https://actions.google.com/sounds/v1/weather/summer_thunder_and_rain.ogg' },
+            { category: 'storms', id: 's74', title: 'Thunder Crack', icon: 'thunderstorm', url: 'https://actions.google.com/sounds/v1/weather/thunder_crack.ogg' },
+            { category: 'storms', id: 's75', title: 'Thunderstorm', icon: 'thunderstorm', url: 'https://actions.google.com/sounds/v1/weather/thunderstorm.ogg' },
+            { category: 'storms', id: 's76', title: 'Thunderstorm Long', icon: 'thunderstorm', url: 'https://actions.google.com/sounds/v1/weather/thunderstorm_long.ogg' },
+            { category: 'storms', id: 's51', title: 'Desert Wind', icon: 'air', url: 'https://actions.google.com/sounds/v1/weather/desert_howling_wind.ogg' },
+            { category: 'storms', id: 's72', title: 'Strong Wind', icon: 'air', url: 'https://actions.google.com/sounds/v1/weather/strong_wind.ogg' },
+            { category: 'storms', id: 's77', title: 'Wind', icon: 'air', url: 'https://actions.google.com/sounds/v1/weather/wind.ogg' }
+        ];
+
+        const audioElements = {};
+        const state = {}; // Stores { playing: bool, volume: float }
+        let globalVolume = 1.0;
+        let globalMuted = false;
+
+        function createCard(sound) {
+            const card = document.createElement('div');
+            card.className = `sound-card ${state[sound.id].playing ? 'active' : ''}`;
+            card.id = `card-${sound.id}-${Math.random().toString(36).substr(2, 5)}`; // Random suffix for multiple instances
+            card.setAttribute('data-sound-id', sound.id);
+            card.innerHTML = `
+                <div class="icon-circle" onclick="toggleSound('${sound.id}')">
+                    <span class="material-symbols-rounded" style="font-size: 32px">${sound.icon}</span>
+                </div>
+                <div class="sound-title">${sound.title}</div>
+                <div class="volume-slider-container">
+                    <span class="material-symbols-rounded" style="font-size: 18px; opacity: 0.5">volume_mute</span>
+                    <input type="range" class="mini-slider" min="0" max="100" value="${state[sound.id].volume * 100}" oninput="updateVol('${sound.id}', this.value)">
+                    <span class="material-symbols-rounded" style="font-size: 18px; opacity: 0.5">volume_up</span>
+                </div>
+            `;
+            return card;
+        }
+
+        function init() {
+            sounds.forEach(sound => {
+                state[sound.id] = { playing: false, volume: 1 };
+                const audio = new Audio(sound.url);
+                audio.loop = true;
+                audioElements[sound.id] = audio;
+
+                const grid = document.getElementById(`${sound.category}-grid`);
+                if (grid) grid.appendChild(createCard(sound));
+            });
+
+            // Search Logic
+            const searchInput = document.getElementById('searchInput');
+            const searchGrid = document.getElementById('search-grid');
+            
+            searchInput.addEventListener('input', () => {
+                const query = searchInput.value.toLowerCase();
+                searchGrid.innerHTML = '';
+                if (!query) return;
+
+                sounds.filter(s => s.title.toLowerCase().includes(query)).forEach(sound => {
+                    searchGrid.appendChild(createCard(sound));
+                });
+            });
+            
+            // Set up tab switching logic
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const viewName = btn.dataset.view;
+                    document.querySelectorAll('.tab-btn').forEach(b => {
+                        b.classList.toggle('active', b === btn);
+                    });
+                    document.querySelectorAll('.view-container').forEach(container => {
+                        container.classList.toggle('active', container.id === `${viewName}-view`);
+                    });
+                });
+            });
+        }
+
+        function toggleSound(id) {
+            const audio = audioElements[id];
+            const isPlaying = !audio.paused;
+            
+            if (!isPlaying) {
+                audio.volume = globalMuted ? 0 : (state[id].volume * globalVolume);
+                audio.play();
+                state[id].playing = true;
+            } else {
+                audio.pause();
+                state[id].playing = false;
+            }
+
+            // Sync all cards across categories and search
+            document.querySelectorAll(`[data-sound-id="${id}"]`).forEach(card => {
+                card.classList.toggle('active', state[id].playing);
+            });
+            
+            updateLiveActivity();
+        }
+
+        function updateVol(id, val) {
+            const vol = val / 100;
+            state[id].volume = vol;
+            if (state[id].playing) {
+                audioElements[id].volume = globalMuted ? 0 : (vol * globalVolume);
+            }
+        }
+
+        function updateLiveActivity() {
+            const activeCount = Object.values(state).filter(s => s.playing).length;
+            
+            if (activeCount > 0) {
+                if (!Gurasuraisu.liveActivity.isActive('mixer')) {
+                    Gurasuraisu.liveActivity.start({
+                        activityId: 'mixer',
+                        url: '/hearmience/activity.html',
+                        homescreen: true,
+                        height: '30px',
+                        showInIsland: true
+                    });
+                }
+                
+                const activeTitles = sounds
+                    .filter(s => state[s.id].playing)
+                    .map(s => s.title)
+                    .join(', ');
+
+                Gurasuraisu.liveActivity.update('mixer', {
+                    activeCount: activeCount,
+                    details: activeTitles,
+                    type: 'live-activity-update' 
+                });
+            } else {
+                Gurasuraisu.liveActivity.stop('mixer');
+            }
+        }
+
+        document.getElementById('stopAllBtn').onclick = () => {
+            sounds.forEach(s => {
+                if (audioElements[s.id]) audioElements[s.id].pause();
+                state[s.id].playing = false;
+            });
+            
+            // Clear active class from all possible card instances (Categories + Search)
+            document.querySelectorAll('.sound-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            updateLiveActivity();
+        };
+
+        window.addEventListener('GurasuraisuVolumeChange', (e) => {
+            globalMuted = e.detail.muted;
+            globalVolume = e.detail.level;
+            Object.keys(audioElements).forEach(id => {
+                const audio = audioElements[id];
+                if (state[id].playing) {
+                    audio.volume = globalMuted ? 0 : (state[id].volume * globalVolume);
+                }
+            });
+        });
+
+        // Listen for messages from Live Activity
+        window.addEventListener('message', (event) => {
+            if (event.source !== window.parent) return;
+            const data = event.data;
+            
+            if (data && data.action === 'stop-hearmience') {
+                document.getElementById('stopAllBtn').click();
+            }
+            
+            // Wait for the activity to load before sending the initial state
+            if (data && data.action === 'activity-ready') {
+                updateLiveActivity();
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
