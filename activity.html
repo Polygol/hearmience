@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <script src="https://cdn.jsdelivr.net/gh/Polygol/polygol.github.io@main/assets/gurapp/api/gurasuraisu-api.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/Polygol/polygol.github.io@main/assets/polygolapp/api/polygol-api.js"></script>
     <style>
         * {
             margin: 0;
@@ -79,11 +79,12 @@
             color: var(--text-color);
         }
     </style>
+    <script src="lang.js"></script>
 </head>
 <body data-app-name="HEARMIENCE">
     <div class="activity-container">
         <div class="info">
-            <div id="status" class="big">Hearmience</div>
+            <div id="status" class="big" data-lang-key="TITLE">Hearmience</div>
         </div>
         <div class="controls">
             <button id="stopBtn" class="control-btn">
@@ -102,9 +103,9 @@
                 if (event.source !== window.parent) return;
                 const data = event.data;
                 if (data && data.type === 'live-activity-update') {
-                    statusText.textContent = data.activeCount > 0 ? `${data.activeCount} sounds` : "Stopped";
+                    statusText.textContent = data.activeCount > 0 ? t("SOUNDS_ACTIVE", {count: data.activeCount}) : t("STOPPED");
 
-                    Gurasuraisu.liveActivity.pushHomescreenUpdate({
+                    Polygol.liveActivity.pushHomescreenUpdate({
                         icon: 'hearing',
                         text: `${data.activeCount}`
                     });
@@ -123,5 +124,33 @@
             window.parent.postMessage({ targetApp: 'Hearmience', action: 'activity-ready' }, '*');
         });
     </script>
+<script>
+function getAppLanguage() {
+    let l = (localStorage.getItem('language') || localStorage.getItem('selectedLanguage') || 'EN').toUpperCase();
+    if (l === 'JA') l = 'JP';
+    return ['EN', 'JP', 'KO', 'ZH'].includes(l) ? l : 'EN';
+}
+function t(key, params = {}) {
+    const lang = getAppLanguage();
+    const dict = window['LANG_' + lang + '_HEARMIENCE'] || window['LANG_EN_HEARMIENCE'] || {};
+    let str = dict[key] || key;
+    Object.keys(params).forEach(p => str = str.replace(new RegExp('\\{' + p + '\\}', 'g'), params[p]));
+    return str;
+}
+function applyLanguage(langCode) {
+    if (langCode) localStorage.setItem('language', langCode);
+    const lang = getAppLanguage();
+    document.querySelectorAll('[data-lang-key]').forEach(el => {
+        const k = el.getAttribute('data-lang-key');
+        if (k) el.textContent = t(k);
+    });
+}
+window.addEventListener('message', (e) => {
+    if (e.data && (e.data.type === 'languageUpdate' || e.data.type === 'localeUpdate')) {
+        applyLanguage(e.data.languageCode);
+    }
+});
+window.addEventListener('DOMContentLoaded', () => applyLanguage());
+</script>
 </body>
 </html>
