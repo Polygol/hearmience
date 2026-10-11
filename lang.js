@@ -1,5 +1,6 @@
 // Polygol Hearmience Language Dictionary
-const LANG_EN_HEARMIENCE = {
+window.LANG_EN_HEARMIENCE = {
+    LOADING_SOUND: "Loading sound, please wait...",
     TITLE: "Hearmience",
     INTERIOR: "Interior",
     NATURE: "Nature",
@@ -64,7 +65,8 @@ const LANG_EN_HEARMIENCE = {
     SOUND_s13: "Wind"
 };
 
-const LANG_JP_HEARMIENCE = {
+window.LANG_JP_HEARMIENCE = {
+    LOADING_SOUND: "サウンドを読み込み中、少々お待ちください...",
     TITLE: "Hearmience",
     INTERIOR: "室内",
     NATURE: "自然",
@@ -128,7 +130,8 @@ const LANG_JP_HEARMIENCE = {
     SOUND_s13: "風"
 };
 
-const LANG_KO_HEARMIENCE = {
+window.LANG_KO_HEARMIENCE = {
+    LOADING_SOUND: "사운드를 불러오는 중입니다. 잠시만 기다려주세요...",
     TITLE: "Hearmience",
     INTERIOR: "실내",
     NATURE: "자연",
@@ -192,7 +195,8 @@ const LANG_KO_HEARMIENCE = {
     SOUND_s13: "바람"
 };
 
-const LANG_ZH_HEARMIENCE = {
+window.LANG_ZH_HEARMIENCE = {
+    LOADING_SOUND: "正在加载声音，请稍候...",
     TITLE: "Hearmience",
     INTERIOR: "室内",
     NATURE: "自然",
@@ -255,3 +259,8 @@ const LANG_ZH_HEARMIENCE = {
     SOUND_s12: "强风",
     SOUND_s13: "风声"
 };
+
+var LANG_EN_HEARMIENCE = window.LANG_EN_HEARMIENCE;
+var LANG_JP_HEARMIENCE = window.LANG_JP_HEARMIENCE;
+var LANG_KO_HEARMIENCE = window.LANG_KO_HEARMIENCE;
+var LANG_ZH_HEARMIENCE = window.LANG_ZH_HEARMIENCE;
