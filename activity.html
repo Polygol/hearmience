@@ -5,6 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <script src="https://cdn.jsdelivr.net/gh/Polygol/polygol.github.io@main/assets/polygolapp/api/polygol-api.js"></script>
     <script src="lang.js"></script>
+    <script>
+        const bcpMap = window.bcpMap || { EN: 'en-US', JP: 'ja-JP', KO: 'ko-KR', ZH: 'zh-CN' };
+        window.bcpMap = bcpMap;
+        var bcpMap = window.bcpMap;
+
+        function getAppLanguage() {
+            let l = (localStorage.getItem('language') || localStorage.getItem('selectedLanguage') || 'EN').toUpperCase();
+            if (l === 'JA') l = 'JP';
+            return ['EN', 'JP', 'KO', 'ZH'].includes(l) ? l : 'EN';
+        }
+        window.getAppLanguage = getAppLanguage;
+        var getAppLanguage = window.getAppLanguage;
+
+        function t(key, params = {}) {
+            const lang = getAppLanguage();
+            const dict = window['LANG_' + lang + '_HEARMIENCE'] || window['LANG_EN_HEARMIENCE'] || {};
+            let str = dict[key] !== undefined ? dict[key] : key;
+            if (params) {
+                Object.keys(params).forEach(p => str = str.replace(new RegExp('\\{' + p + '\\}', 'g'), params[p]));
+            }
+            return str;
+        }
+        window.t = t;
+        var t = window.t;
+
+        function applyLanguage(langCode) {
+            if (langCode) localStorage.setItem('language', langCode);
+            const lang = getAppLanguage();
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const k = el.getAttribute('data-lang-key');
+                if (k) el.textContent = t(k);
+            });
+        }
+        window.applyLanguage = applyLanguage;
+
+        window.addEventListener('message', (e) => {
+            if (e.data && (e.data.type === 'languageUpdate' || e.data.type === 'localeUpdate')) {
+                applyLanguage(e.data.languageCode);
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => applyLanguage());
+    </script>
     <style>
         * {
             margin: 0;
@@ -125,35 +168,5 @@
             window.parent.postMessage({ targetApp: 'Hearmience', action: 'activity-ready' }, '*');
         });
     </script>
-<script>
-const bcpMap = { EN: 'en-US', JP: 'ja-JP', KO: 'ko-KR', ZH: 'zh-CN' };
-window.bcpMap = bcpMap;
-function getAppLanguage() {
-    let l = (localStorage.getItem('language') || localStorage.getItem('selectedLanguage') || 'EN').toUpperCase();
-    if (l === 'JA') l = 'JP';
-    return ['EN', 'JP', 'KO', 'ZH'].includes(l) ? l : 'EN';
-}
-function t(key, params = {}) {
-    const lang = getAppLanguage();
-    const dict = window['LANG_' + lang + '_HEARMIENCE'] || window['LANG_EN_HEARMIENCE'] || {};
-    let str = dict[key] || key;
-    Object.keys(params).forEach(p => str = str.replace(new RegExp('\\{' + p + '\\}', 'g'), params[p]));
-    return str;
-}
-function applyLanguage(langCode) {
-    if (langCode) localStorage.setItem('language', langCode);
-    const lang = getAppLanguage();
-    document.querySelectorAll('[data-lang-key]').forEach(el => {
-        const k = el.getAttribute('data-lang-key');
-        if (k) el.textContent = t(k);
-    });
-}
-window.addEventListener('message', (e) => {
-    if (e.data && (e.data.type === 'languageUpdate' || e.data.type === 'localeUpdate')) {
-        applyLanguage(e.data.languageCode);
-    }
-});
-window.addEventListener('DOMContentLoaded', () => applyLanguage());
-</script>
 </body>
 </html>
