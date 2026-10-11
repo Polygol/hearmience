@@ -1,4 +1,7 @@
 // Polygol Hearmience Language Dictionary
+window.bcpMap = { EN: 'en-US', JP: 'ja-JP', KO: 'ko-KR', ZH: 'zh-CN' };
+var bcpMap = window.bcpMap;
+
 window.LANG_EN_HEARMIENCE = {
     LOADING_SOUND: "Loading sound, please wait...",
     TITLE: "Hearmience",
